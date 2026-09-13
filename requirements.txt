@@ -1,0 +1,10 @@
+streamlit
+deepforest
+opencv-python
+pandas
+numpy
+Pillow
+geopandas
+rasterio
+shapely
+pyogrio
