@@ -187,14 +187,18 @@ if uploaded:
 
     with st.spinner("🛰️ DeepForest neural model analyzing tree crowns..."):
         image = Image.open(tmp_path).convert("RGB")
-        data, count, canopy_pixels, canopy_percent, conf = detect_trees_hybrid(image)
+        result = detect_trees_hybrid(image)
+        count = result["tree_count"]
+        canopy_percent = result["canopy_density"]
+        canopy_pixels = result["crown_pixels"]
+        annotated_image = result["annotated_image"]
+        boxes = result["boxes"]
 
-    # Filter data based on sidebar threshold slider
-    if not data.empty and 'score' in data.columns:
-        filtered_data = data[data['score'] >= conf_threshold]
-        count = len(filtered_data)
-        conf = float(filtered_data['score'].mean()) if count > 0 else 0.0
+        data = pd.DataFrame(boxes, columns=["xmin", "ymin", "xmax", "ymax"])
 
+        rgb = cv2.cvtColor(annotated_image, cv2.COLOR_RGB2BGR)
+
+        conf = conf_threshold  # Placeholder for mean confidence if using DL model
     # 4 Glassmorphism Metric Cards
     c1, c2, c3, c4 = st.columns(4)
     with c1:
@@ -215,7 +219,7 @@ if uploaded:
         st.markdown(f"""
         <div class="metric-card">
             <div class="metric-val">{conf:.2f}</div>
-            <div class="metric-title">Mean Confidence</div>
+            <div class="metric-title">Detection Threshold</div>
         </div>
         """, unsafe_allow_html=True)
     with c4:
@@ -247,11 +251,11 @@ if uploaded:
         st.image(rgb, caption="High-Resolution Detection Map", use_container_width=True)
 
     with tab_analytics:
-        if not data.empty and 'score' in data.columns:
-            st.markdown("##### 📈 Prediction Score Distribution")
-            hist_vals, bin_edges = np.histogram(data['score'], bins=20, range=(0.1, 1.0))
-            chart_data = pd.DataFrame({'Confidence Score': bin_edges[:-1], 'Tree Count': hist_vals})
-            st.bar_chart(chart_data.set_index('Confidence Score'), color="#10b981")
+        st.markdown("#### 📊 Detection Summary")
+
+        st.write(f"**Total Trees Detected:** {count:,}")
+        st.write(f"**Canopy Density:** {canopy_percent:.1f}%")
+        st.write(f"**Crown Pixels:** {canopy_pixels:,}")
 
     # Data Table & Export
     with st.expander("📋 View Raw Detection Geo-Data & Download Report", expanded=True):
