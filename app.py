@@ -1,188 +1,221 @@
 import streamlit as st
 import cv2
 import tempfile
+import pandas as pd
+import numpy as np
 from detector import detect_trees
 
 st.set_page_config(
-    page_title="ForestLens",
+    page_title="ForestLens • AI Canopy Intelligence",
     page_icon="🌲",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
-# ---------- CUSTOM CSS ----------
+# ----------------- MODERN DARK GLASSMORPHISM STYLING -----------------
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
 
-html, body, [class*="css"]{
-    font-family: 'Poppins', sans-serif;
-    background: #07111A;
+* {
+    font-family: 'Plus Jakarta Sans', sans-serif;
 }
 
-.main{
-    background: linear-gradient(180deg,#07111A 0%, #0B1F16 100%);
+/* Background gradient */
+.stApp {
+    background: radial-gradient(circle at 10% 20%, #0c1c14 0%, #060b08 100%);
+    color: #e2e8f0;
 }
 
-.hero{
-    padding:35px;
-    border-radius:22px;
-    background: linear-gradient(135deg,#0F3D2E,#14532D);
-    color:white;
-    margin-bottom:20px;
+/* Header Banner */
+.hero-box {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(5, 150, 105, 0.05) 100%);
+    border: 1px solid rgba(52, 211, 153, 0.25);
+    border-radius: 20px;
+    padding: 30px;
+    margin-bottom: 25px;
+    backdrop-filter: blur(12px);
+    box-shadow: 0 10px 30px -10px rgba(0,0,0,0.5);
 }
 
-.hero h1{
-    font-size:48px;
-    margin:0;
+.hero-box h1 {
+    font-size: 2.4rem;
+    font-weight: 800;
+    margin: 0;
+    background: linear-gradient(90deg, #34d399, #10b981, #6ee7b7);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
 }
 
-.hero p{
-    opacity:0.9;
-    font-size:18px;
+.hero-box p {
+    color: #94a3b8;
+    margin-top: 6px;
+    font-size: 1rem;
 }
 
-.card{
-    background: rgba(255,255,255,0.06);
+/* Modern Metric Cards */
+.metric-card {
+    background: rgba(18, 32, 25, 0.55);
+    border: 1px solid rgba(52, 211, 153, 0.15);
+    border-radius: 16px;
+    padding: 20px;
+    text-align: center;
     backdrop-filter: blur(10px);
-    border:1px solid rgba(255,255,255,0.08);
-    border-radius:18px;
-    padding:20px;
-    text-align:center;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
 }
 
-.metric{
-    font-size:34px;
-    color:#4ADE80;
-    font-weight:700;
+.metric-card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(52, 211, 153, 0.45);
+    box-shadow: 0 12px 28px rgba(16, 185, 129, 0.15);
 }
 
-.label{
-    color:#C7D2FE;
-    font-size:14px;
+.metric-val {
+    font-size: 2.2rem;
+    font-weight: 800;
+    color: #34d399;
+    letter-spacing: -0.5px;
 }
 
-.section{
-    background:#0B1720;
-    border-radius:18px;
-    padding:18px;
-    border:1px solid #1F2937;
+.metric-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #94a3b8;
+    margin-top: 4px;
 }
 
-.footer{
-    text-align:center;
-    color:#94A3B8;
-    padding:30px;
+/* Glass Section Container */
+.glass-container {
+    background: rgba(15, 23, 19, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 18px;
+    padding: 24px;
+    margin-top: 20px;
+    backdrop-filter: blur(8px);
 }
 </style>
 """, unsafe_allow_html=True)
 
-# ---------- HERO ----------
+# ----------------- SIDEBAR CONTROLS -----------------
+with st.sidebar:
+    st.image("assets/logo.png", width=90)
+    st.markdown("### **ForestLens Studio**")
+    st.caption("AI-Powered Forest Canopy Analytics")
+    st.markdown("---")
+    
+    uploaded = st.file_uploader(
+        "Upload Aerial / Satellite Image",
+        type=["jpg", "jpeg", "png", "tif", "tiff"],
+        help="Upload high-res drone or satellite imagery (RGB)"
+    )
+    
+    st.markdown("---")
+    st.markdown("#### **Detection Settings**")
+    conf_threshold = st.slider("Confidence Filter", 0.10, 0.90, 0.25, 0.05)
+    
+    st.info("💡 **Tip:** Adjust confidence threshold to filter out ambiguous canopy shadows.")
+
+# ----------------- MAIN VIEW -----------------
 st.markdown("""
-<div class="hero">
-    <h1>🌲 ForestLens</h1>
-    <p>AI-powered Forest Canopy & Tree Crown Detection using Deep Learning</p>
+<div class="hero-box">
+    <h1>🌲 ForestLens AI</h1>
+    <p>Autonomous Canopy Segmentation & Individual Tree Crown (ITC) Detection</p>
 </div>
 """, unsafe_allow_html=True)
 
-# ---------- SIDEBAR ----------
-with st.sidebar:
-    st.sidebar.image("assets/logo.jpg", width=120)
-    st.title("⚙️ Analysis")
-    uploaded = st.file_uploader(
-        "Upload Satellite Image",
-        type=["jpg","jpeg","png","tif","tiff"]
-    )
-
-    st.markdown("---")
-    st.info("Supported: RGB aerial & satellite imagery")
-
-# ---------- MAIN ----------
 if uploaded:
+    with tempfile.NamedTemporaryFile(delete=False) as tmp:
+        tmp.write(uploaded.read())
+        tmp_path = tmp.name
 
-    tmp = tempfile.NamedTemporaryFile(delete=False)
-    tmp.write(uploaded.read())
+    with st.spinner("🛰️ DeepForest neural model analyzing tree crowns..."):
+        image, data, count, canopy_pixels, canopy_percent, conf = detect_trees(tmp_path)
 
-    with st.spinner("🛰️ AI is analyzing the forest canopy..."):
-        image, data, count, canopy_pixels, canopy_percent, conf = detect_trees(tmp.name)
+    # Filter data based on sidebar threshold slider
+    if not data.empty and 'score' in data.columns:
+        filtered_data = data[data['score'] >= conf_threshold]
+        count = len(filtered_data)
+        conf = float(filtered_data['score'].mean()) if count > 0 else 0.0
 
-    # Metrics
-    c1,c2,c3,c4 = st.columns(4)
-
+    # 4 Glassmorphism Metric Cards
+    c1, c2, c3, c4 = st.columns(4)
     with c1:
         st.markdown(f"""
-        <div class="card">
-            <div class="metric">{count}</div>
-            <div class="label">Trees Detected</div>
+        <div class="metric-card">
+            <div class="metric-val">{count:,}</div>
+            <div class="metric-title">Trees Detected</div>
         </div>
         """, unsafe_allow_html=True)
-
     with c2:
         st.markdown(f"""
-        <div class="card">
-            <div class="metric">{canopy_percent:.1f}%</div>
-            <div class="label">Canopy Coverage</div>
+        <div class="metric-card">
+            <div class="metric-val">{canopy_percent:.1f}%</div>
+            <div class="metric-title">Canopy Density</div>
         </div>
         """, unsafe_allow_html=True)
-
     with c3:
         st.markdown(f"""
-        <div class="card">
-            <div class="metric">{conf:.2f}</div>
-            <div class="label">AI Confidence</div>
+        <div class="metric-card">
+            <div class="metric-val">{conf:.2f}</div>
+            <div class="metric-title">Mean Confidence</div>
         </div>
         """, unsafe_allow_html=True)
-
     with c4:
         st.markdown(f"""
-        <div class="card">
-            <div class="metric">{canopy_pixels:,}</div>
-            <div class="label">Crown Pixels</div>
+        <div class="metric-card">
+            <div class="metric-val">{canopy_pixels:,}</div>
+            <div class="metric-title">Crown Pixels</div>
         </div>
         """, unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # Images
-    left,right = st.columns([1,1])
+    # Visual Inspection Section with Tabs
+    st.markdown("### 🔍 Visual Analysis")
+    tab_side_by_side, tab_overlay, tab_analytics = st.tabs(["⚡ Side-by-Side View", "🎯 Overlay Only", "📊 Model Distribution"])
 
-    with left:
-        st.markdown("### 📸 Original Image")
-        st.image(uploaded, use_container_width=True)
+    rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
-    with right:
-        st.markdown("### 🌳 AI Detection")
-        rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        st.image(rgb, use_container_width=True)
+    with tab_side_by_side:
+        col_left, col_right = st.columns(2)
+        with col_left:
+            st.markdown("##### 📷 Original Image")
+            st.image(uploaded, use_container_width=True)
+        with col_right:
+            st.markdown("##### 🌲 Model Predictions (Bounding Boxes)")
+            st.image(rgb, use_container_width=True)
 
-    st.markdown("<br>", unsafe_allow_html=True)
+    with tab_overlay:
+        st.image(rgb, caption="High-Resolution Detection Map", use_container_width=True)
 
-    # Detection table
-    st.markdown('<div class="section">', unsafe_allow_html=True)
-    st.subheader("📋 Detection Results")
-    st.dataframe(data, use_container_width=True)
+    with tab_analytics:
+        if not data.empty and 'score' in data.columns:
+            st.markdown("##### 📈 Prediction Score Distribution")
+            hist_vals, bin_edges = np.histogram(data['score'], bins=20, range=(0.1, 1.0))
+            chart_data = pd.DataFrame({'Confidence Score': bin_edges[:-1], 'Tree Count': hist_vals})
+            st.bar_chart(chart_data.set_index('Confidence Score'), color="#10b981")
 
-    csv = data.to_csv(index=False).encode("utf-8")
-
-    st.download_button(
-        "⬇ Download CSV Report",
-        csv,
-        "forestlens_results.csv",
-        "text/csv"
-    )
-    st.markdown("</div>", unsafe_allow_html=True)
+    # Data Table & Export
+    with st.expander("📋 View Raw Detection Geo-Data & Download Report", expanded=True):
+        st.dataframe(data, use_container_width=True, height=260)
+        csv = data.to_csv(index=False).encode("utf-8")
+        st.download_button(
+            label="⬇ Download Detection CSV",
+            data=csv,
+            file_name="forestlens_tree_inventory.csv",
+            mime="text/csv",
+            help="Download the detection coordinates and confidence scores"
+        )
 
 else:
-
     st.markdown("""
-    <div class="section" style="text-align:center;padding:60px;">
-        <h2>📤 Upload a Satellite Image</h2>
-        <p>Start by uploading an aerial RGB image to detect individual tree crowns.</p>
+    <div style="border: 2px dashed rgba(52, 211, 153, 0.3); border-radius: 18px; padding: 60px; text-align: center; margin-top: 30px;">
+        <h3 style="color: #6ee7b7;">Ready for Forest Analysis</h3>
+        <p style="color: #94a3b8; max-width: 500px; margin: 0 auto;">
+            Upload an aerial or satellite RGB image using the left sidebar to generate automated tree counts, canopy cover percentages, and crown metrics.
+        </p>
     </div>
     """, unsafe_allow_html=True)
-
-# ---------- FOOTER ----------
-st.markdown("""
-<div class="footer">
-ForestLens • AI for Sustainable Forest Monitoring 🌍
-</div>
-""", unsafe_allow_html=True)
