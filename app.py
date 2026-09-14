@@ -4,7 +4,8 @@ import tempfile
 import pandas as pd
 import numpy as np
 from detector import detect_trees
-
+from PIL import Image
+from detector import detect_trees_hybrid
 st.set_page_config(
     page_title="ForestLens • AI Canopy Intelligence",
     page_icon="🌲",
@@ -117,6 +118,59 @@ with st.sidebar:
     conf_threshold = st.slider("Confidence Filter", 0.10, 0.90, 0.25, 0.05)
     
     st.info("💡 **Tip:** Adjust confidence threshold to filter out ambiguous canopy shadows.")
+with st.sidebar:
+    st.markdown("### Detection Settings")
+    
+    detection_mode = st.radio(
+        "Detection Algorithm",
+        options=["Standard DL Model", "High-Density / Hybrid (Optimistic)"],
+        index=1,
+        help="Use Hybrid to capture overlapping understory and shaded lower crowns."
+    )
+    
+    if detection_mode == "High-Density / Hybrid (Optimistic)":
+        min_distance = st.slider(
+            "Crown Spacing (px)", 
+            min_value=6, 
+            max_value=30, 
+            value=12,
+            help="Lower values detect smaller/tighter understory crowns."
+        )
+        green_thresh = st.slider("Canopy Sensitivity", 20, 80, 45)
+    else:
+        conf_filter = st.slider("Confidence Filter", 0.10, 0.90, 0.30)
+# --- Execution & Metric Display ---
+uploaded_file = st.sidebar.file_uploader("Upload Aerial / Satellite Image", type=["jpg", "png", "jpeg"])
+
+if uploaded_file:
+    input_img = Image.open(uploaded_file).convert("RGB")
+    
+    if detection_mode == "High-Density / Hybrid (Optimistic)":
+        results = detect_trees_hybrid(input_img, min_peak_distance=min_distance, green_thresh=green_thresh)
+        tree_count = results["tree_count"]
+        density = results["canopy_density"]
+        crown_pixels = results["crown_pixels"]
+        annotated_img = results["annotated_image"]
+        mean_conf = "N/A (Density)"
+    else:
+        # Call your existing DL model inference function here
+        pass
+
+    # Top KPI Metrics
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("TREES DETECTED", tree_count)
+    col2.metric("CANOPY DENSITY", f"{density}%")
+    col3.metric("MEAN CONFIDENCE", str(mean_conf))
+    col4.metric("CROWN PIXELS", f"{crown_pixels:,}")
+
+    # Display Side-by-Side Images
+    c_orig, c_pred = st.columns(2)
+    with c_orig:
+        st.subheader("📷 Original Image")
+        st.image(input_img, use_container_width=True)
+    with c_pred:
+        st.subheader("🌲 Model Predictions (Bounding Boxes)")
+        st.image(annotated_img, use_container_width=True)
 
 # ----------------- MAIN VIEW -----------------
 st.markdown("""
