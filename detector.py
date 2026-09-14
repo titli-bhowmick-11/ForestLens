@@ -56,8 +56,7 @@ def detect_trees_hybrid(image: Image.Image, min_peak_distance: int = 14, green_t
         boxes.append((xmin, ymin, xmax, ymax))
         
         # Draw bounding box
-        cv2.rectangle(annotated, (xmin, ymin), (xmax, ymax), (0, 255, 120), 1)
-
+        cv2.rectangle(annotated, (int(xmin), int(ymin)), (int(xmax), int(ymax)), (255, 255, 0), 3)
     crown_pixels_count = int(np.count_nonzero(canopy_mask))
     canopy_density = (crown_pixels_count / (h * w)) * 100.0
 
