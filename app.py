@@ -101,7 +101,7 @@ st.markdown("""
 
 # ----------------- SIDEBAR CONTROLS -----------------
 with st.sidebar:
-    st.image("assets/logo.png", width=90)
+    st.image("assets/logo.jpg", width=90)
     st.markdown("### **ForestLens Studio**")
     st.caption("AI-Powered Forest Canopy Analytics")
     st.markdown("---")
