@@ -186,7 +186,8 @@ if uploaded:
         tmp_path = tmp.name
 
     with st.spinner("🛰️ DeepForest neural model analyzing tree crowns..."):
-        image, data, count, canopy_pixels, canopy_percent, conf = detect_trees_hybrid(tmp_path)
+        image = Image.open(tmp_path).convert("RGB")
+        data, count, canopy_pixels, canopy_percent, conf = detect_trees_hybrid(image)
 
     # Filter data based on sidebar threshold slider
     if not data.empty and 'score' in data.columns:
