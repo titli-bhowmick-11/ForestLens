@@ -3,7 +3,7 @@ import cv2
 import tempfile
 import pandas as pd
 import numpy as np
-from detector import detect_trees
+from detector import detect_trees_hybrid
 from PIL import Image
 from detector import detect_trees_hybrid
 st.set_page_config(
@@ -186,7 +186,7 @@ if uploaded:
         tmp_path = tmp.name
 
     with st.spinner("🛰️ DeepForest neural model analyzing tree crowns..."):
-        image, data, count, canopy_pixels, canopy_percent, conf = detect_trees(tmp_path)
+        image, data, count, canopy_pixels, canopy_percent, conf = detect_trees_hybrid(tmp_path)
 
     # Filter data based on sidebar threshold slider
     if not data.empty and 'score' in data.columns:
