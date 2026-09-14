@@ -46,13 +46,14 @@ def detect_trees_hybrid(image: Image.Image, min_peak_distance: int = 14, green_t
     # 6. Generate synthetic bounding boxes & overlay
     boxes = []
     annotated = np.array(image).copy()
+    boxes = []
+    box_radius = int(min_peak_distance * 0.8)
     
-    for idx in range(1, len(coords) + 1):
-        crown_pixels = np.argwhere(labels == idx)
-        if len(crown_pixels) < 15:  # filter noise speckles
-            continue
-        ymin, xmin = crown_pixels.min(axis=0)
-        ymax, xmax = crown_pixels.max(axis=0)
+    for y, x in coords:
+        xmin = max(0, int(x - box_radius))
+        ymin = max(0, int(y - box_radius))
+        xmax = min(w, int(x + box_radius))
+        ymax = min(h, int(y + box_radius))
         boxes.append((xmin, ymin, xmax, ymax))
         
         # Draw bounding box
