@@ -236,7 +236,7 @@ if uploaded:
     st.markdown("### 🔍 Visual Analysis")
     tab_side_by_side, tab_overlay, tab_analytics = st.tabs(["⚡ Side-by-Side View", "🎯 Overlay Only", "📊 Model Distribution"])
 
-    rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    rgb = np.array(image)
 
     with tab_side_by_side:
         col_left, col_right = st.columns(2)
